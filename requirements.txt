@@ -1,0 +1,13 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+transformers==4.47.1
+torch==2.5.1
+accelerate==1.2.1
+pandas==2.2.3
+matplotlib==3.9.4
+seaborn==0.13.2
+requests==2.32.3
+pytest==8.3.4
+httpx==0.28.1
+ruff==0.8.4

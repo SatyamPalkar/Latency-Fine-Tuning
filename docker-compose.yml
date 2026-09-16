@@ -1,0 +1,12 @@
+services:
+  llm-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      MODEL_NAME: ${MODEL_NAME:-distilgpt2}
+      MAX_NEW_TOKENS: ${MAX_NEW_TOKENS:-80}
+      DEVICE: ${DEVICE:-auto}
+    volumes:
+      - ./benchmark_results:/app/benchmark_results
+      - ./plots:/app/plots

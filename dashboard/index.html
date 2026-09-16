@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM TTFT Benchmark Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-2: #eef2f7;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #dbe3ef;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+
+    .hero {
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      padding: 48px 28px 34px;
+    }
+
+    .hero > div,
+    .metrics,
+    .grid {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--blue);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 5vw, 56px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .hero p:last-child {
+      max-width: 780px;
+      margin: 18px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.6;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      padding: 24px 28px 4px;
+    }
+
+    .metric-card,
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .metric-card {
+      padding: 18px;
+    }
+
+    .metric-card span,
+    .metric-card small,
+    .panel-heading p,
+    .bar-label span {
+      color: var(--muted);
+    }
+
+    .metric-card span {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .metric-card strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 28px;
+      line-height: 1;
+    }
+
+    .metric-card small {
+      display: block;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      padding: 20px 28px 48px;
+    }
+
+    .panel {
+      padding: 20px;
+      min-width: 0;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    .panel-heading {
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .panel-heading p {
+      margin: 6px 0 0;
+      line-height: 1.45;
+    }
+
+    .bars {
+      display: grid;
+      gap: 14px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 135px minmax(120px, 1fr) 92px;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bar-label strong,
+    .bar-label span {
+      display: block;
+      font-size: 13px;
+    }
+
+    .bar-track {
+      height: 13px;
+      overflow: hidden;
+      background: var(--surface-2);
+      border-radius: 999px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+    }
+
+    .bar-row code {
+      color: var(--text);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 12px 10px;
+      text-align: left;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: var(--surface-2);
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .empty {
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 28px;
+      text-align: center;
+    }
+
+    pre {
+      margin: 0;
+      overflow-x: auto;
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 18px;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 860px) {
+      .metrics,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bar-row {
+        grid-template-columns: 1fr;
+        gap: 7px;
+      }
+
+      .bar-row code {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+
+        <section class="hero">
+          <div>
+            <p class="eyebrow">LLM Inference Benchmark Dashboard</p>
+            <h1>TTFT, Latency, and Throughput</h1>
+            <p>
+              Generated from <code>benchmark_results/results.csv</code>. Use this dashboard to
+              compare streaming and non-streaming inference behavior across prompt lengths.
+            </p>
+          </div>
+        </section>
+
+        <section class="metrics">
+          
+    <article class="metric-card">
+      <span>Total Requests</span>
+      <strong>6</strong>
+      <small>Rows in benchmark CSV</small>
+    </article>
+    
+    <article class="metric-card">
+      <span>p95 TTFT</span>
+      <strong>174.3 ms</strong>
+      <small>Streaming endpoint only</small>
+    </article>
+    
+    <article class="metric-card">
+      <span>Mean Total Latency</span>
+      <strong>2,089.7 ms</strong>
+      <small>Across all benchmarked requests</small>
+    </article>
+    
+    <article class="metric-card">
+      <span>Mean Throughput</span>
+      <strong>38.2</strong>
+      <small>Generated tokens per second</small>
+    </article>
+    
+        </section>
+
+        <main class="grid">
+          
+    <section class="panel">
+      <div class="panel-heading">
+        <h2>p95 TTFT by Prompt Length</h2>
+        <p>Lower is better. Streaming endpoint only.</p>
+      </div>
+      <div class="bars">
+        
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="short generate-stream">
+                <div class="bar-fill" style="width:100%;background:#16a34a;"></div>
+              </div>
+              <code>175.8 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate-stream">
+                <div class="bar-fill" style="width:91%;background:#16a34a;"></div>
+              </div>
+              <code>161.2 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="long generate-stream">
+                <div class="bar-fill" style="width:14%;background:#16a34a;"></div>
+              </div>
+              <code>26.3 ms</code>
+            </div>
+            
+      </div>
+    </section>
+    
+          
+    <section class="panel">
+      <div class="panel-heading">
+        <h2>p95 Total Latency</h2>
+        <p>End-to-end response latency by endpoint.</p>
+      </div>
+      <div class="bars">
+        
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="short generate">
+                <div class="bar-fill" style="width:100%;background:#2563eb;"></div>
+              </div>
+              <code>3,850.0 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="short generate-stream">
+                <div class="bar-fill" style="width:52%;background:#16a34a;"></div>
+              </div>
+              <code>2,035.8 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate">
+                <div class="bar-fill" style="width:54%;background:#2563eb;"></div>
+              </div>
+              <code>2,095.8 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate-stream">
+                <div class="bar-fill" style="width:53%;background:#16a34a;"></div>
+              </div>
+              <code>2,074.4 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="long generate">
+                <div class="bar-fill" style="width:37%;background:#2563eb;"></div>
+              </div>
+              <code>1,462.0 ms</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="long generate-stream">
+                <div class="bar-fill" style="width:26%;background:#16a34a;"></div>
+              </div>
+              <code>1,020.4 ms</code>
+            </div>
+            
+      </div>
+    </section>
+    
+          
+    <section class="panel">
+      <div class="panel-heading">
+        <h2>Mean Tokens Per Second</h2>
+        <p>Higher is better.</p>
+      </div>
+      <div class="bars">
+        
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="short generate">
+                <div class="bar-fill" style="width:37%;background:#2563eb;"></div>
+              </div>
+              <code>20.8</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="short generate-stream">
+                <div class="bar-fill" style="width:70%;background:#16a34a;"></div>
+              </div>
+              <code>38.8</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate">
+                <div class="bar-fill" style="width:69%;background:#2563eb;"></div>
+              </div>
+              <code>38.2</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate-stream">
+                <div class="bar-fill" style="width:68%;background:#16a34a;"></div>
+              </div>
+              <code>37.6</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="long generate">
+                <div class="bar-fill" style="width:100%;background:#2563eb;"></div>
+              </div>
+              <code>54.7</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="long generate-stream">
+                <div class="bar-fill" style="width:71%;background:#16a34a;"></div>
+              </div>
+              <code>39.2</code>
+            </div>
+            
+      </div>
+    </section>
+    
+          
+    <section class="panel">
+      <div class="panel-heading">
+        <h2>Mean Output Tokens</h2>
+        <p>Useful context when comparing total latency.</p>
+      </div>
+      <div class="bars">
+        
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="short generate">
+                <div class="bar-fill" style="width:100%;background:#2563eb;"></div>
+              </div>
+              <code>80.0</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>short</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="short generate-stream">
+                <div class="bar-fill" style="width:98%;background:#16a34a;"></div>
+              </div>
+              <code>79.0</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate">
+                <div class="bar-fill" style="width:100%;background:#2563eb;"></div>
+              </div>
+              <code>80.0</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>medium</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="medium generate-stream">
+                <div class="bar-fill" style="width:97%;background:#16a34a;"></div>
+              </div>
+              <code>78.0</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate</span>
+              </div>
+              <div class="bar-track" aria-label="long generate">
+                <div class="bar-fill" style="width:100%;background:#2563eb;"></div>
+              </div>
+              <code>80.0</code>
+            </div>
+            
+            <div class="bar-row">
+              <div class="bar-label">
+                <strong>long</strong>
+                <span>generate-stream</span>
+              </div>
+              <div class="bar-track" aria-label="long generate-stream">
+                <div class="bar-fill" style="width:50%;background:#16a34a;"></div>
+              </div>
+              <code>40.0</code>
+            </div>
+            
+      </div>
+    </section>
+    
+          
+    <section class="panel wide">
+      <div class="panel-heading">
+        <h2>Benchmark Summary</h2>
+        <p>Grouped by prompt length and endpoint.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Prompt</th>
+              <th>Endpoint</th>
+              <th>Requests</th>
+              <th>p50 TTFT</th>
+              <th>p95 TTFT</th>
+              <th>Mean Total</th>
+              <th>p95 Total</th>
+              <th>Mean tok/s</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>short</td>
+              <td><span class="pill">generate</span></td>
+              <td>1</td>
+              <td>0.0 ms</td>
+              <td>0.0 ms</td>
+              <td>3,850.0 ms</td>
+              <td>3,850.0 ms</td>
+              <td>20.8</td>
+            </tr>
+            
+            <tr>
+              <td>short</td>
+              <td><span class="pill">generate-stream</span></td>
+              <td>1</td>
+              <td>175.8 ms</td>
+              <td>175.8 ms</td>
+              <td>2,035.8 ms</td>
+              <td>2,035.8 ms</td>
+              <td>38.8</td>
+            </tr>
+            
+            <tr>
+              <td>medium</td>
+              <td><span class="pill">generate</span></td>
+              <td>1</td>
+              <td>0.0 ms</td>
+              <td>0.0 ms</td>
+              <td>2,095.8 ms</td>
+              <td>2,095.8 ms</td>
+              <td>38.2</td>
+            </tr>
+            
+            <tr>
+              <td>medium</td>
+              <td><span class="pill">generate-stream</span></td>
+              <td>1</td>
+              <td>161.2 ms</td>
+              <td>161.2 ms</td>
+              <td>2,074.4 ms</td>
+              <td>2,074.4 ms</td>
+              <td>37.6</td>
+            </tr>
+            
+            <tr>
+              <td>long</td>
+              <td><span class="pill">generate</span></td>
+              <td>1</td>
+              <td>0.0 ms</td>
+              <td>0.0 ms</td>
+              <td>1,462.0 ms</td>
+              <td>1,462.0 ms</td>
+              <td>54.7</td>
+            </tr>
+            
+            <tr>
+              <td>long</td>
+              <td><span class="pill">generate-stream</span></td>
+              <td>1</td>
+              <td>26.3 ms</td>
+              <td>26.3 ms</td>
+              <td>1,020.4 ms</td>
+              <td>1,020.4 ms</td>
+              <td>39.2</td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+    </section>
+    
+        </main>
+        
+</body>
+</html>
