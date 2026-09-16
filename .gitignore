@@ -38,9 +38,6 @@ htmlcov/
 # Project-generated benchmark artifacts
 benchmark_results/*.csv
 benchmark_results/*.json
-plots/*.png
-plots/*.jpg
-plots/*.jpeg
 plots/.matplotlib-cache/
 
 # Model and experiment artifacts

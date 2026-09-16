@@ -46,7 +46,7 @@ The current project includes:
 - Tokens-per-second calculation
 - Benchmark script
 - Plot generation script
-- HTML benchmark dashboard generator
+- Plotly HTML benchmark dashboard generator
 - Dockerfile
 - docker-compose setup
 - pytest tests
@@ -221,7 +221,7 @@ plots/tokens_per_second.png
 
 ### `scripts/make_dashboard.py`
 
-This script reads benchmark results and generates a self-contained HTML dashboard.
+This script reads benchmark results and generates an interactive Plotly HTML dashboard.
 
 Expected output:
 
@@ -235,8 +235,15 @@ The dashboard includes:
 - p95 TTFT
 - mean total latency
 - mean tokens per second
-- bar charts by prompt length and endpoint
+- interactive bar charts by prompt length and endpoint
+- request-level scatter plots
+- latency distribution plots
 - grouped summary table
+
+The current dashboard is generated as static HTML because that is enough for a first
+end-to-end ML engineering project. A dedicated frontend would be useful later if the
+project grows into a benchmark product with multiple saved runs, model comparison pages,
+interactive filters, or live monitoring.
 
 ### `tests/`
 

@@ -6,12 +6,14 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
 
 PROMPT_ORDER = ["short", "medium", "long"]
 ENDPOINT_ORDER = ["generate", "generate-stream"]
-COLORS = {
-    "generate": "#2563eb",
-    "generate-stream": "#16a34a",
+PALETTE = {
+    "generate": "#2f6fed",
+    "generate-stream": "#1fa971",
 }
 
 
@@ -27,19 +29,35 @@ def format_number(value: object, suffix: str = "") -> str:
     return f"{float(value):,.1f}{suffix}"
 
 
-def metric_card(label: str, value: str, note: str) -> str:
-    return f"""
-    <article class="metric-card">
-      <span>{html.escape(label)}</span>
-      <strong>{html.escape(value)}</strong>
-      <small>{html.escape(note)}</small>
-    </article>
-    """
+def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    numeric_columns = [
+        "input_tokens",
+        "output_tokens",
+        "tokens_per_second",
+        "total_latency_ms",
+        "ttft_ms",
+        "wall_latency_ms",
+    ]
+    for column in numeric_columns:
+        if column in df:
+            df[column] = pd.to_numeric(df[column], errors="coerce")
+    df["prompt_name"] = pd.Categorical(
+        df["prompt_name"],
+        categories=PROMPT_ORDER,
+        ordered=True,
+    )
+    df["endpoint"] = pd.Categorical(
+        df["endpoint"],
+        categories=ENDPOINT_ORDER,
+        ordered=True,
+    )
+    return df.sort_values(["prompt_name", "endpoint", "request_id"])
 
 
 def grouped_summary(df: pd.DataFrame) -> pd.DataFrame:
     grouped = (
-        df.groupby(["endpoint", "prompt_name"], dropna=False)
+        df.groupby(["endpoint", "prompt_name"], observed=False, dropna=False)
         .agg(
             requests=("request_id", "count"),
             mean_ttft_ms=("ttft_ms", "mean"),
@@ -55,76 +73,153 @@ def grouped_summary(df: pd.DataFrame) -> pd.DataFrame:
         )
         .reset_index()
     )
-    grouped["prompt_rank"] = grouped["prompt_name"].apply(
-        lambda name: PROMPT_ORDER.index(name) if name in PROMPT_ORDER else len(PROMPT_ORDER)
-    )
-    grouped["endpoint_rank"] = grouped["endpoint"].apply(
-        lambda name: ENDPOINT_ORDER.index(name) if name in ENDPOINT_ORDER else len(ENDPOINT_ORDER)
-    )
-    return grouped.sort_values(["prompt_rank", "endpoint_rank"]).drop(
-        columns=["prompt_rank", "endpoint_rank"]
-    )
+    return grouped[grouped["requests"] > 0].sort_values(["prompt_name", "endpoint"])
 
 
-def bar_chart(
+def apply_chart_style(fig: go.Figure, height: int = 360) -> go.Figure:
+    fig.update_layout(
+        height=height,
+        margin={"l": 24, "r": 18, "t": 16, "b": 32},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font={"family": "Inter, system-ui, -apple-system, Segoe UI, sans-serif", "size": 13},
+        legend={
+            "orientation": "h",
+            "yanchor": "bottom",
+            "y": 1.02,
+            "xanchor": "right",
+            "x": 1,
+        },
+        hoverlabel={
+            "bgcolor": "#ffffff",
+            "bordercolor": "#d8e0eb",
+            "font_size": 13,
+            "font_family": "Inter, system-ui, sans-serif",
+        },
+        xaxis={"showgrid": False, "zeroline": False},
+        yaxis={"gridcolor": "#e8edf5", "zeroline": False},
+    )
+    return fig
+
+
+def grouped_bar(
     summary: pd.DataFrame,
     metric: str,
-    title: str,
-    ylabel: str,
-    include_endpoint: Optional[str] = None,
-) -> str:
-    chart_df = summary.copy()
-    if include_endpoint:
-        chart_df = chart_df[chart_df["endpoint"] == include_endpoint]
-    chart_df = chart_df.dropna(subset=[metric])
-    max_value = float(chart_df[metric].max()) if not chart_df.empty else 0.0
-    if max_value <= 0:
-        return empty_chart(title, "No data available for this metric yet.")
+    y_title: str,
+    endpoint_filter: Optional[str] = None,
+) -> go.Figure:
+    chart_df = summary.dropna(subset=[metric])
+    if endpoint_filter is not None:
+        chart_df = chart_df[chart_df["endpoint"].astype(str) == endpoint_filter]
 
-    rows = []
-    for _, row in chart_df.iterrows():
-        value = float(row[metric])
-        width = max(2, int((value / max_value) * 100))
-        endpoint = str(row["endpoint"])
-        prompt_name = str(row["prompt_name"])
-        color = COLORS.get(endpoint, "#475569")
-        label = f"{html.escape(prompt_name)} {html.escape(endpoint)}"
-        rows.append(
-            f"""
-            <div class="bar-row">
-              <div class="bar-label">
-                <strong>{html.escape(prompt_name)}</strong>
-                <span>{html.escape(endpoint)}</span>
-              </div>
-              <div class="bar-track" aria-label="{label}">
-                <div class="bar-fill" style="width:{width}%;background:{color};"></div>
-              </div>
-              <code>{format_number(value, " ms" if metric.endswith("_ms") else "")}</code>
-            </div>
-            """
+    fig = go.Figure()
+    endpoints = [endpoint_filter] if endpoint_filter else ENDPOINT_ORDER
+    for endpoint in endpoints:
+        endpoint_df = chart_df[chart_df["endpoint"].astype(str) == endpoint]
+        if endpoint_df.empty:
+            continue
+        fig.add_trace(
+            go.Bar(
+                name=endpoint,
+                x=endpoint_df["prompt_name"].astype(str),
+                y=endpoint_df[metric],
+                marker_color=PALETTE.get(endpoint, "#62748e"),
+                customdata=endpoint_df[["requests"]],
+                hovertemplate=(
+                    "<b>%{x}</b><br>"
+                    f"{html.escape(y_title)}: %{{y:,.1f}}<br>"
+                    "requests: %{customdata[0]}<extra></extra>"
+                ),
+            )
         )
+    fig.update_layout(barmode="group")
+    fig.update_yaxes(title_text=y_title)
+    return apply_chart_style(fig)
 
+
+def latency_scatter(df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
+    for endpoint in ENDPOINT_ORDER:
+        endpoint_df = df[df["endpoint"].astype(str) == endpoint]
+        if endpoint_df.empty:
+            continue
+        fig.add_trace(
+            go.Scatter(
+                name=endpoint,
+                x=endpoint_df["input_tokens"],
+                y=endpoint_df["total_latency_ms"],
+                mode="markers",
+                marker={
+                    "size": endpoint_df["output_tokens"].fillna(1).clip(lower=6, upper=80),
+                    "sizemode": "diameter",
+                    "sizeref": 2,
+                    "color": PALETTE.get(endpoint, "#62748e"),
+                    "opacity": 0.76,
+                    "line": {"width": 1, "color": "#ffffff"},
+                },
+                customdata=endpoint_df[["prompt_name", "output_tokens", "tokens_per_second"]],
+                hovertemplate=(
+                    "input tokens: %{x}<br>"
+                    "total latency: %{y:,.1f} ms<br>"
+                    "prompt: %{customdata[0]}<br>"
+                    "output tokens: %{customdata[1]:,.0f}<br>"
+                    "tokens/sec: %{customdata[2]:,.1f}<extra></extra>"
+                ),
+            )
+        )
+    fig.update_xaxes(title_text="Input tokens")
+    fig.update_yaxes(title_text="Total latency ms")
+    return apply_chart_style(fig)
+
+
+def latency_distribution(df: pd.DataFrame) -> go.Figure:
+    fig = go.Figure()
+    for endpoint in ENDPOINT_ORDER:
+        endpoint_df = df[df["endpoint"].astype(str) == endpoint]
+        if endpoint_df.empty:
+            continue
+        fig.add_trace(
+            go.Box(
+                name=endpoint,
+                y=endpoint_df["total_latency_ms"],
+                marker_color=PALETTE.get(endpoint, "#62748e"),
+                boxmean=True,
+                hovertemplate="total latency: %{y:,.1f} ms<extra></extra>",
+            )
+        )
+    fig.update_yaxes(title_text="Total latency ms")
+    return apply_chart_style(fig)
+
+
+def chart_panel(title: str, subtitle: str, fig: go.Figure, include_plotlyjs: bool) -> str:
+    chart_html = pio.to_html(
+        fig,
+        include_plotlyjs="cdn" if include_plotlyjs else False,
+        full_html=False,
+        config={
+            "displayModeBar": True,
+            "responsive": True,
+            "displaylogo": False,
+        },
+    )
     return f"""
-    <section class="panel">
+    <section class="panel chart-panel">
       <div class="panel-heading">
         <h2>{html.escape(title)}</h2>
-        <p>{html.escape(ylabel)}</p>
+        <p>{html.escape(subtitle)}</p>
       </div>
-      <div class="bars">
-        {''.join(rows)}
-      </div>
+      {chart_html}
     </section>
     """
 
 
-def empty_chart(title: str, message: str) -> str:
+def metric_card(label: str, value: str, note: str) -> str:
     return f"""
-    <section class="panel">
-      <div class="panel-heading">
-        <h2>{html.escape(title)}</h2>
-      </div>
-      <div class="empty">{html.escape(message)}</div>
-    </section>
+    <article class="metric-card">
+      <span>{html.escape(label)}</span>
+      <strong>{html.escape(value)}</strong>
+      <small>{html.escape(note)}</small>
+    </article>
     """
 
 
@@ -174,33 +269,9 @@ def summary_table(summary: pd.DataFrame) -> str:
 
 
 def render_dashboard(df: pd.DataFrame, input_path: Path) -> str:
+    df = normalize_dataframe(df)
     summary = grouped_summary(df)
-    stream_df = df[df["endpoint"] == "generate-stream"].dropna(subset=["ttft_ms"])
-    ttft_chart = bar_chart(
-        summary,
-        "p95_ttft_ms",
-        "p95 TTFT by Prompt Length",
-        "Lower is better. Streaming endpoint only.",
-        "generate-stream",
-    )
-    total_latency_chart = bar_chart(
-        summary,
-        "p95_total_latency_ms",
-        "p95 Total Latency",
-        "End-to-end response latency by endpoint.",
-    )
-    throughput_chart = bar_chart(
-        summary,
-        "mean_tokens_per_second",
-        "Mean Tokens Per Second",
-        "Higher is better.",
-    )
-    output_tokens_chart = bar_chart(
-        summary,
-        "mean_output_tokens",
-        "Mean Output Tokens",
-        "Useful context when comparing total latency.",
-    )
+    stream_df = df[df["endpoint"].astype(str) == "generate-stream"].dropna(subset=["ttft_ms"])
 
     cards = [
         metric_card("Total Requests", str(len(df)), "Rows in benchmark CSV"),
@@ -221,6 +292,39 @@ def render_dashboard(df: pd.DataFrame, input_path: Path) -> str:
         ),
     ]
 
+    panels = [
+        chart_panel(
+            "p95 TTFT by Prompt Length",
+            "First-token responsiveness for the streaming endpoint.",
+            grouped_bar(summary, "p95_ttft_ms", "p95 TTFT ms", "generate-stream"),
+            include_plotlyjs=True,
+        ),
+        chart_panel(
+            "p95 Total Latency",
+            "End-to-end response latency across endpoint modes.",
+            grouped_bar(summary, "p95_total_latency_ms", "p95 total latency ms"),
+            include_plotlyjs=False,
+        ),
+        chart_panel(
+            "Throughput by Prompt Length",
+            "Mean generated tokens per second.",
+            grouped_bar(summary, "mean_tokens_per_second", "mean tokens/sec"),
+            include_plotlyjs=False,
+        ),
+        chart_panel(
+            "Prompt Size vs Latency",
+            "Each point is one benchmark request; point size reflects output tokens.",
+            latency_scatter(df),
+            include_plotlyjs=False,
+        ),
+        chart_panel(
+            "Latency Distribution",
+            "Box plots help spot endpoint variability beyond averages.",
+            latency_distribution(df),
+            include_plotlyjs=False,
+        ),
+    ]
+
     return page_template(
         body=f"""
         <section class="hero">
@@ -228,8 +332,9 @@ def render_dashboard(df: pd.DataFrame, input_path: Path) -> str:
             <p class="eyebrow">LLM Inference Benchmark Dashboard</p>
             <h1>TTFT, Latency, and Throughput</h1>
             <p>
-              Generated from <code>{html.escape(str(input_path))}</code>. Use this dashboard to
-              compare streaming and non-streaming inference behavior across prompt lengths.
+              Interactive Plotly dashboard generated from
+              <code>{html.escape(str(input_path))}</code>. Use it to compare
+              streaming and non-streaming behavior across prompt lengths.
             </p>
           </div>
         </section>
@@ -239,10 +344,7 @@ def render_dashboard(df: pd.DataFrame, input_path: Path) -> str:
         </section>
 
         <main class="grid">
-          {ttft_chart}
-          {total_latency_chart}
-          {throughput_chart}
-          {output_tokens_chart}
+          {''.join(panels)}
           {summary_table(summary)}
         </main>
         """
@@ -289,15 +391,15 @@ def page_template(body: str) -> str:
   <style>
     :root {{
       color-scheme: light;
-      --bg: #f8fafc;
+      --bg: #f5f7fb;
       --surface: #ffffff;
       --surface-2: #eef2f7;
-      --text: #0f172a;
-      --muted: #64748b;
-      --line: #dbe3ef;
-      --blue: #2563eb;
-      --green: #16a34a;
-      --shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+      --text: #101828;
+      --muted: #667085;
+      --line: #d9e2ef;
+      --accent: #2f6fed;
+      --accent-2: #1fa971;
+      --shadow: 0 18px 48px rgba(16, 24, 40, 0.08);
     }}
 
     * {{
@@ -323,40 +425,43 @@ def page_template(body: str) -> str:
     }}
 
     .hero {{
-      background: var(--surface);
+      background:
+        linear-gradient(135deg, rgba(47, 111, 237, 0.10), rgba(31, 169, 113, 0.08)),
+        var(--surface);
       border-bottom: 1px solid var(--line);
-      padding: 48px 28px 34px;
+      padding: 54px 28px 38px;
     }}
 
     .hero > div,
     .metrics,
     .grid {{
-      max-width: 1180px;
+      max-width: 1220px;
       margin: 0 auto;
     }}
 
     .eyebrow {{
       margin: 0 0 10px;
-      color: var(--blue);
+      color: var(--accent);
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0;
     }}
 
     h1 {{
+      max-width: 860px;
       margin: 0;
-      font-size: clamp(32px, 5vw, 56px);
+      font-size: clamp(36px, 5vw, 62px);
       line-height: 1;
       letter-spacing: 0;
     }}
 
     .hero p:last-child {{
-      max-width: 780px;
+      max-width: 800px;
       margin: 18px 0 0;
       color: var(--muted);
       font-size: 17px;
-      line-height: 1.6;
+      line-height: 1.65;
     }}
 
     .metrics {{
@@ -368,7 +473,7 @@ def page_template(body: str) -> str:
 
     .metric-card,
     .panel {{
-      background: var(--surface);
+      background: rgba(255, 255, 255, 0.94);
       border: 1px solid var(--line);
       border-radius: 8px;
       box-shadow: var(--shadow);
@@ -380,21 +485,20 @@ def page_template(body: str) -> str:
 
     .metric-card span,
     .metric-card small,
-    .panel-heading p,
-    .bar-label span {{
+    .panel-heading p {{
       color: var(--muted);
     }}
 
     .metric-card span {{
       display: block;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 800;
     }}
 
     .metric-card strong {{
       display: block;
       margin-top: 10px;
-      font-size: 28px;
+      font-size: 30px;
       line-height: 1;
     }}
 
@@ -412,8 +516,12 @@ def page_template(body: str) -> str:
     }}
 
     .panel {{
-      padding: 20px;
       min-width: 0;
+      padding: 20px;
+    }}
+
+    .chart-panel {{
+      min-height: 470px;
     }}
 
     .wide {{
@@ -421,7 +529,7 @@ def page_template(body: str) -> str:
     }}
 
     .panel-heading {{
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }}
 
     h2 {{
@@ -433,42 +541,6 @@ def page_template(body: str) -> str:
     .panel-heading p {{
       margin: 6px 0 0;
       line-height: 1.45;
-    }}
-
-    .bars {{
-      display: grid;
-      gap: 14px;
-    }}
-
-    .bar-row {{
-      display: grid;
-      grid-template-columns: 135px minmax(120px, 1fr) 92px;
-      align-items: center;
-      gap: 12px;
-    }}
-
-    .bar-label strong,
-    .bar-label span {{
-      display: block;
-      font-size: 13px;
-    }}
-
-    .bar-track {{
-      height: 13px;
-      overflow: hidden;
-      background: var(--surface-2);
-      border-radius: 999px;
-    }}
-
-    .bar-fill {{
-      height: 100%;
-      border-radius: 999px;
-    }}
-
-    .bar-row code {{
-      color: var(--text);
-      font-size: 12px;
-      text-align: right;
     }}
 
     .table-wrap {{
@@ -504,7 +576,7 @@ def page_template(body: str) -> str:
       background: var(--surface-2);
       padding: 4px 9px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 800;
     }}
 
     .empty {{
@@ -518,26 +590,17 @@ def page_template(body: str) -> str:
     pre {{
       margin: 0;
       overflow-x: auto;
-      background: #0f172a;
-      color: #e2e8f0;
+      background: #101828;
+      color: #edf2f7;
       border-radius: 8px;
       padding: 18px;
       line-height: 1.55;
     }}
 
-    @media (max-width: 860px) {{
+    @media (max-width: 900px) {{
       .metrics,
       .grid {{
         grid-template-columns: 1fr;
-      }}
-
-      .bar-row {{
-        grid-template-columns: 1fr;
-        gap: 7px;
-      }}
-
-      .bar-row code {{
-        text-align: left;
       }}
     }}
   </style>
@@ -566,7 +629,7 @@ def main() -> None:
 
     df = pd.read_csv(input_path)
     output_path.write_text(render_dashboard(df, input_path), encoding="utf-8")
-    print(f"Wrote benchmark dashboard to {output_path}")
+    print(f"Wrote Plotly benchmark dashboard to {output_path}")
 
 
 if __name__ == "__main__":

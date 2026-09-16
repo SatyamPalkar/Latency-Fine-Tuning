@@ -16,7 +16,7 @@ LLM applications can feel slow even when total generation time is acceptable. Fo
 - Reproducible benchmark scripts
 - Dockerized local deployment
 - pytest validation for API contracts and metrics
-- README-ready latency charts
+- Interactive Plotly benchmark dashboard
 
 ## Architecture
 
@@ -109,6 +109,64 @@ Open the benchmark dashboard in your browser:
 
 ```text
 dashboard/index.html
+```
+
+The dashboard uses Plotly for interactive charts, hover tooltips, grouped endpoint
+comparisons, and request-level latency inspection.
+
+This project intentionally uses a generated static dashboard rather than a full frontend
+framework. That keeps the first version reproducible and focused on ML engineering. A
+React/Next.js frontend would make sense later if the project needs run filtering, saved
+experiments, model comparison pages, or live monitoring views.
+
+## Benchmark Snapshot
+
+The current checked-in charts come from a small local benchmark run using `distilgpt2`
+on Apple MPS. Treat these as sample results that prove the pipeline works; for a final
+portfolio submission, rerun the benchmark with more repetitions and update the charts.
+
+| Metric | Value |
+| --- | ---: |
+| Benchmark requests | 6 |
+| Mean total latency | 2,089.7 ms |
+| Streaming p95 TTFT | 174.3 ms |
+| Mean throughput | 38.2 tokens/sec |
+
+## Visualizations
+
+### TTFT By Prompt Length
+
+This chart focuses on the streaming endpoint because TTFT only exists when tokens are
+returned incrementally.
+
+![TTFT by prompt length](plots/ttft_by_prompt_length.png)
+
+### Total Latency By Prompt Length
+
+This compares end-to-end latency for standard generation versus streaming generation.
+
+![Total latency by prompt length](plots/total_latency_by_prompt_length.png)
+
+### Tokens Per Second
+
+This tracks generation throughput across prompt sizes and response modes.
+
+![Tokens per second](plots/tokens_per_second.png)
+
+## Refreshing The Results
+
+To regenerate the benchmark data, static charts, and Plotly dashboard:
+
+```bash
+make run
+```
+
+In another terminal:
+
+```bash
+make benchmark
+make plots
+make dashboard
 ```
 
 ## Testing
