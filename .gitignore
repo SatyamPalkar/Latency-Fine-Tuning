@@ -39,6 +39,7 @@ htmlcov/
 benchmark_results/*.csv
 benchmark_results/*.json
 plots/.matplotlib-cache/
+outputs/**/*.inspect.ndjson
 
 # Model and experiment artifacts
 models/
