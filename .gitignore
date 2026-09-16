@@ -1,12 +1,41 @@
-.venv/
+# Python
 __pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.Python
+build/
+dist/
+eggs/
+.eggs/
+wheels/
+
+# Virtual environments and local env
+.venv/
+venv/
+env/
+ENV/
+.env
+.envrc
+
+# Tool caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-*.pyc
-*.egg-info/
-.env
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
 
+# Notebooks and IDEs
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# Project-generated benchmark artifacts
 benchmark_results/*.csv
 benchmark_results/*.json
 plots/*.png
@@ -14,5 +43,9 @@ plots/*.jpg
 plots/*.jpeg
 plots/.matplotlib-cache/
 
+# Model and experiment artifacts
 models/
 mlruns/
+
+# OS files
+.DS_Store
