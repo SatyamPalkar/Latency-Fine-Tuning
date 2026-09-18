@@ -17,6 +17,7 @@ LLM applications can feel slow even when total generation time is acceptable. Fo
 - Dockerized local deployment
 - pytest validation for API contracts and metrics
 - Interactive Plotly benchmark dashboard
+- Live prompt frontend with generated text, token-level TTFT, and JSON results
 
 ## Architecture
 
@@ -52,8 +53,33 @@ make run
 Then open:
 
 ```text
-http://localhost:8000/docs
+http://localhost:8000/
 ```
+
+Enter a prompt and select **Generate**. The live frontend streams the generated text,
+then displays `text`, `model_name`, `device`, `input_tokens`, `output_tokens`,
+`ttft_ms`, `total_latency_ms`, and `tokens_per_second`. A Plotly timing chart separates
+TTFT from the remaining generation time; the JSON response preserves unrounded values.
+The first request may take longer while the model downloads or loads. The default
+`distilgpt2` model completes text; it is not an instruction-tuned chat assistant.
+
+API documentation is at `/docs`; saved benchmark visualizations are at `/benchmarks`.
+The frontend and API share the same server, including in Docker. Plotly is served from
+the installed Python package, so the live chart needs no external CDN.
+
+### What The Latency Figures Measure
+
+Both generation endpoints measure TTFT from the start of generation to the first
+generated token ID, before the streamer's text buffering. Total latency ends when
+generation finishes. These are server generation measurements: they exclude model
+loading, tokenization, and network transit. Accelerator work is synchronized at the
+timing boundaries. Throughput is output tokens divided by total generation seconds.
+Output token counts include generated special tokens, even if hidden in decoded text.
+TTFT is `null` if no token is generated; the frontend displays `N/A`.
+
+Use temperature `0` for greedy decoding in repeatable comparisons. Loading state,
+hardware, prompt length, and concurrent requests still affect latency. Run benchmarks
+without other active generation requests for comparable measurements.
 
 ## Docker
 
@@ -114,10 +140,9 @@ dashboard/index.html
 The dashboard uses Plotly for interactive charts, hover tooltips, grouped endpoint
 comparisons, and request-level latency inspection.
 
-This project intentionally uses a generated static dashboard rather than a full frontend
-framework. That keeps the first version reproducible and focused on ML engineering. A
-React/Next.js frontend would make sense later if the project needs run filtering, saved
-experiments, model comparison pages, or live monitoring views.
+The live frontend uses plain HTML, CSS, and JavaScript served by FastAPI. The separate
+benchmark dashboard is generated from CSV; `make dashboard` does not overwrite the
+live prompt workspace.
 
 ## Benchmark Snapshot
 
@@ -136,8 +161,10 @@ portfolio submission, rerun the benchmark with more repetitions and update the c
 
 ### TTFT By Prompt Length
 
-This chart focuses on the streaming endpoint because TTFT only exists when tokens are
-returned incrementally.
+This historical chart focuses on the streaming endpoint because the original benchmark
+only instrumented TTFT there. Both endpoints now measure the first generated token.
+Older streaming measurements timed the first visible text chunk and re-tokenized text
+for output counts; rerun benchmarks before comparing them with the new measurements.
 
 ![TTFT by prompt length](plots/ttft_by_prompt_length.png)
 

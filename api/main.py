@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from plotly.offline import get_plotlyjs
 
 from api.schemas import GenerateRequest, GenerateResponse, HealthResponse
 from src.generation import LLMGenerator
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+@lru_cache(maxsize=1)
+def plotly_bundle() -> str:
+    return get_plotlyjs()
 
 
 @lru_cache(maxsize=1)
@@ -21,6 +31,22 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
     app.state.generator_provider = get_generator
+    app.mount("/static", StaticFiles(directory=ROOT / "frontend"), name="frontend")
+
+    @app.get("/", include_in_schema=False)
+    def frontend() -> FileResponse:
+        return FileResponse(ROOT / "frontend" / "index.html")
+
+    @app.get("/benchmarks", include_in_schema=False)
+    def benchmarks() -> FileResponse:
+        return FileResponse(ROOT / "dashboard" / "index.html")
+
+    @app.get("/assets/plotly.min.js", include_in_schema=False)
+    def plotly() -> Response:
+        return Response(
+            plotly_bundle(), media_type="application/javascript",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

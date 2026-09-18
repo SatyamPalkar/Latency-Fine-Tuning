@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Latency Lab | Live Inference</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script defer src="/assets/plotly.min.js"></script>
+  <script defer src="/static/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">Latency<span>Lab</span></a>
+    <nav aria-label="Main navigation">
+      <a href="/" aria-current="page">Live inference</a>
+      <a href="/benchmarks">Benchmarks</a>
+      <a href="/docs">API</a>
+    </nav>
+  </header>
+  <main>
+    <div class="page-heading">
+      <div><p class="eyebrow">MODEL PERFORMANCE</p><h1>Live inference</h1></div>
+      <span id="status" class="status" role="status">Ready</span>
+    </div>
+    <div class="workspace">
+      <section class="input-section" aria-labelledby="prompt-heading">
+        <h2 id="prompt-heading">Prompt</h2>
+        <form id="prompt-form">
+          <label class="sr-only" for="prompt">Your prompt</label>
+          <textarea id="prompt" name="prompt" rows="9" maxlength="4000" required
+            placeholder="The future of artificial intelligence is" spellcheck="true"></textarea>
+          <div class="input-meta"><span>Input text</span><span id="character-count">0 / 4,000</span></div>
+          <div class="settings">
+            <div class="setting-row">
+              <label for="max-tokens">Max output tokens</label>
+              <input id="max-tokens" type="number" min="1" max="256" step="1" value="80" required>
+            </div>
+            <div class="setting-row">
+              <label for="temperature">Temperature</label>
+              <output id="temperature-value" for="temperature">0.0</output>
+            </div>
+            <input id="temperature" type="range" min="0" max="2" step="0.1" value="0">
+            <div class="range-labels"><span>0.0</span><span>2.0</span></div>
+          </div>
+          <button class="primary" id="submit" type="submit">Generate</button>
+          <p id="error" class="error" role="alert" hidden></p>
+        </form>
+        <dl class="model-info">
+          <div><dt>Model</dt><dd id="model-name">Not run yet</dd></div>
+          <div><dt>Device</dt><dd id="device">--</dd></div>
+          <div><dt>Input tokens</dt><dd id="input-tokens">--</dd></div>
+          <div><dt>Output tokens</dt><dd id="output-tokens">--</dd></div>
+        </dl>
+      </section>
+      <div class="results-section">
+        <section class="metrics" aria-label="Generation metrics">
+          <div class="metric"><span>Time to first token</span><p><strong id="ttft">--</strong> <small>ms</small></p><span class="metric-note">First generated token</span></div>
+          <div class="metric"><span>Total latency</span><p><strong id="total-latency">--</strong> <small>ms</small></p><span class="metric-note">Server generation</span></div>
+          <div class="metric"><span>Throughput</span><p><strong id="throughput">--</strong> <small>tok/s</small></p><span class="metric-note">Tokens / generation time</span></div>
+        </section>
+        <section class="response-section" aria-labelledby="response-heading">
+          <div class="section-heading"><h2 id="response-heading">Response</h2><button id="copy" class="secondary" type="button" disabled>Copy text</button></div>
+          <div id="response" class="response-text" aria-busy="false"><span class="placeholder">No response yet.</span></div>
+        </section>
+        <section class="timing-section" aria-labelledby="timing-heading">
+          <div class="section-heading"><h2 id="timing-heading">Generation timing</h2><span id="timing-total" class="subtle">No measurement</span></div>
+          <div id="timing-chart" role="img" aria-label="No generation timing measured yet"><p class="chart-empty">Awaiting a completed request</p></div>
+          <div class="chart-legend"><span><i class="key first"></i>Time to first token</span><span><i class="key remaining"></i>Remaining generation</span></div>
+        </section>
+        <details class="json-section" open>
+          <summary>JSON response</summary>
+          <pre id="json-response">No completed request.</pre>
+        </details>
+      </div>
+    </div>
+    <footer>Server timing excludes model loading, prompt tokenization, and network transit. Token counts include generated special tokens.</footer>
+  </main>
+</body>
+</html>
