@@ -1,5 +1,7 @@
 # LLM TTFT Optimization Platform
 
+The deployment preparation adds accurate readiness checks, one active generation at a time, prompt/context validation, cancellable streaming, a production Dockerfile, and a Render configuration. The live UI includes example prompts and model-loading status. See [DEPLOYMENT.md](DEPLOYMENT.md) for setup, verification results, and remaining hosting steps. Python 3.11 or newer is required.
+
 A Dockerized FastAPI service for measuring and improving **Time To First Token (TTFT)** in local LLM inference.
 
 This project is intentionally scoped as a two-week, hiring-manager-friendly MVP: it focuses on inference APIs, streaming, latency instrumentation, reproducible benchmarks, tests, Docker, and clear benchmark charts.
@@ -231,6 +233,7 @@ make dashboard
 ## Testing
 
 ```bash
+make install-dev
 make test
 make lint
 ```

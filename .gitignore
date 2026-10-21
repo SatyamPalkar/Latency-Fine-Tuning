@@ -20,6 +20,9 @@ env/
 ENV/
 .env
 .envrc
+.env.*
+!.env.example
+.cache/
 
 # Tool caches
 .pytest_cache/

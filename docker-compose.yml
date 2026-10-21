@@ -5,8 +5,12 @@ services:
       - "8000:8000"
     environment:
       MODEL_NAME: ${MODEL_NAME:-distilgpt2}
-      MAX_NEW_TOKENS: ${MAX_NEW_TOKENS:-80}
-      DEVICE: ${DEVICE:-auto}
+      MAX_NEW_TOKENS: ${MAX_NEW_TOKENS:-256}
+      DEVICE: ${DEVICE:-cpu}
+      PRELOAD_MODEL: "true"
+      GENERATION_TIMEOUT_SECONDS: ${GENERATION_TIMEOUT_SECONDS:-45}
+      PORT: "8000"
+    restart: unless-stopped
     volumes:
       - ./benchmark_results:/app/benchmark_results
       - ./plots:/app/plots

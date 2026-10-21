@@ -3,17 +3,25 @@ from __future__ import annotations
 import json
 import logging
 import time
-from threading import Thread
+from threading import Event, Thread
 from typing import Dict, Generator, Optional
 
 import torch
-from transformers import TextIteratorStreamer
+from transformers import StoppingCriteria, StoppingCriteriaList, TextIteratorStreamer
 
 from src.config import settings
 from src.metrics import LatencyMetrics
 from src.model_loader import load_model_and_tokenizer
 
 logger = logging.getLogger(__name__)
+
+
+class StopWhenCancelled(StoppingCriteria):
+    def __init__(self, cancelled: Event):
+        self.cancelled = cancelled
+
+    def __call__(self, input_ids, scores, **kwargs):
+        return self.cancelled.is_set()
 
 
 class TimedStreamer(TextIteratorStreamer):
@@ -41,6 +49,18 @@ class LLMGenerator:
     def _inputs(self, prompt: str) -> Dict[str, torch.Tensor]:
         return self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
+    def _validate_context(self, inputs, max_new_tokens):
+        config = getattr(self.model, "config", None)
+        limit = getattr(config, "max_position_embeddings", None) or getattr(config, "n_positions", None)
+        if limit and int(inputs["input_ids"].shape[-1]) + max_new_tokens > limit:
+            raise ValueError(
+                f"Prompt plus output exceeds this model’s {limit}-token context window. "
+                "Shorten the prompt or reduce max output tokens."
+            )
+
+    def validate_request(self, prompt, max_new_tokens):
+        self._validate_context(self._inputs(prompt), max_new_tokens)
+
     def _synchronize(self) -> None:
         if str(self.device).startswith("cuda"):
             torch.cuda.synchronize(self.device)
@@ -54,6 +74,7 @@ class LLMGenerator:
         temperature: float,
     ) -> dict[str, object]:
         inputs = self._inputs(prompt)
+        self._validate_context(inputs, max_new_tokens)
         streamer = TimedStreamer(self.tokenizer)
         self._synchronize()
         started_at = time.perf_counter()
@@ -62,6 +83,7 @@ class LLMGenerator:
                 **inputs,
                 "streamer": streamer,
                 "max_new_tokens": max_new_tokens,
+                "max_time": settings.generation_timeout_seconds,
                 "do_sample": temperature > 0,
                 "pad_token_id": self.tokenizer.eos_token_id,
             }
@@ -96,13 +118,17 @@ class LLMGenerator:
         temperature: float,
     ) -> Generator[str, None, None]:
         inputs = self._inputs(prompt)
+        self._validate_context(inputs, max_new_tokens)
         input_tokens = int(inputs["input_ids"].shape[-1])
         streamer = TimedStreamer(self.tokenizer)
+        cancelled = Event()
 
         generation_kwargs = {
             **inputs,
             "streamer": streamer,
             "max_new_tokens": max_new_tokens,
+            "max_time": settings.generation_timeout_seconds,
+            "stopping_criteria": StoppingCriteriaList([StopWhenCancelled(cancelled)]),
             "do_sample": temperature > 0,
             "pad_token_id": self.tokenizer.eos_token_id,
         }
@@ -132,13 +158,15 @@ class LLMGenerator:
         thread = Thread(target=run_generation, daemon=True)
         thread.start()
 
-        for chunk in streamer:
-            if not chunk:
-                continue
-            chunks.append(chunk)
-            yield _sse("token", {"text": chunk})
-
-        thread.join()
+        try:
+            for chunk in streamer:
+                if not chunk:
+                    continue
+                chunks.append(chunk)
+                yield _sse("token", {"text": chunk})
+        finally:
+            cancelled.set()
+            thread.join()
         if errors:
             yield _sse("error", {"message": "Model generation failed. Check the server logs."})
             return

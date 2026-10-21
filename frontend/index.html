@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Latency Lab | Live Inference</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <meta name="description" content="Explore live language-model inference, token streaming, and measured generation latency. A project by Satyam Palkar.">
   <link rel="stylesheet" href="/static/styles.css">
   <script defer src="/assets/plotly.min.js"></script>
   <script defer src="/static/app.js"></script>
@@ -20,8 +22,9 @@
   <main>
     <div class="page-heading">
       <div><p class="eyebrow">MODEL PERFORMANCE</p><h1>Live inference</h1></div>
-      <span id="status" class="status" role="status">Ready</span>
+      <span id="status" class="status" role="status">Checking service…</span>
     </div>
+    <p class="page-intro">Explore a language model’s response, one token at a time. Compare time to first token, total generation time, and throughput.</p>
     <div class="workspace">
       <section class="input-section" aria-labelledby="prompt-heading">
         <h2 id="prompt-heading">Prompt</h2>
@@ -29,6 +32,8 @@
           <label class="sr-only" for="prompt">Your prompt</label>
           <textarea id="prompt" name="prompt" rows="9" maxlength="4000" required
             placeholder="The future of artificial intelligence is" spellcheck="true"></textarea>
+          <p class="prompt-hint">The default model, distilgpt2, continues your text. Start a sentence rather than asking it to act as a chat assistant.</p>
+          <div class="presets" aria-label="Example prompts"><button type="button" data-prompt="A good data pipeline should">Data pipelines</button><button type="button" data-prompt="The future of clean energy is">Clean energy</button><button type="button" data-prompt="Machine learning works by">Machine learning</button></div>
           <div class="input-meta"><span>Input text</span><span id="character-count">0 / 4,000</span></div>
           <div class="settings">
             <div class="setting-row">
@@ -42,7 +47,7 @@
             <input id="temperature" type="range" min="0" max="2" step="0.1" value="0">
             <div class="range-labels"><span>0.0</span><span>2.0</span></div>
           </div>
-          <button class="primary" id="submit" type="submit">Generate</button>
+          <div class="run-controls"><button class="primary" id="submit" type="submit">Generate</button><button class="secondary" id="cancel" type="button" hidden>Stop</button></div>
           <p id="error" class="error" role="alert" hidden></p>
         </form>
         <dl class="model-info">
@@ -73,7 +78,7 @@
         </details>
       </div>
     </div>
-    <footer>Server timing excludes model loading, prompt tokenization, and network transit. Token counts include generated special tokens.</footer>
+    <footer>Server timing excludes model loading, prompt tokenization, and network transit. Token counts include generated special tokens. <a href="https://github.com/SatyamPalkar/Latency-Fine-Tuning" target="_blank" rel="noopener noreferrer">Built by Satyam Palkar · View source ↗</a></footer>
   </main>
 </body>
 </html>

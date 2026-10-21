@@ -26,7 +26,7 @@ def load_model_and_tokenizer(model_name: Optional[str] = None, device: Optional[
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(selected_model)
+    model = AutoModelForCausalLM.from_pretrained(selected_model, use_safetensors=True)
     model.to(selected_device)
     model.eval()
     return model, tokenizer, selected_device

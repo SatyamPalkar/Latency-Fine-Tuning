@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: satyam-latency-lab
+    runtime: docker
+    # Review the current price before provisioning this 2 GB compute plan.
+    plan: 1c-2g
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /ready
+    numInstances: 1
+    autoDeployTrigger: "off"
+    envVars:
+      - key: DEVICE
+        value: cpu
+      - key: PRELOAD_MODEL
+        value: "true"
+      - key: PORT
+        value: "10000"
+      - key: MAX_NEW_TOKENS
+        value: "256"
+      - key: GENERATION_TIMEOUT_SECONDS
+        value: "45"

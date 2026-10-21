@@ -1,4 +1,5 @@
 import json
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
@@ -94,3 +95,31 @@ def test_no_generated_tokens_has_null_ttft(generator):
     assert result["ttft_ms"] is None
     assert result["output_tokens"] == 0
     assert result["text"] == ""
+
+
+def test_context_window_is_checked_before_generation(generator):
+    generator.model.config = SimpleNamespace(n_positions=4)
+    with pytest.raises(ValueError, match="context window"):
+        generator.generate("hello", 3, 0)
+    assert generator.model.kwargs is None
+
+
+def test_closing_stream_cancels_generation_thread(generator):
+    finished = Event()
+
+    class CancellableModel(FakeModel):
+        def generate(self, **kwargs):
+            streamer = kwargs["streamer"]
+            streamer.put(kwargs["input_ids"])
+            streamer.put(torch.tensor([4]))
+            streamer.put(torch.tensor([5]))
+            while not kwargs["stopping_criteria"][0](None, None):
+                finished.wait(0.001)
+            streamer.end()
+            finished.set()
+
+    generator.model = CancellableModel()
+    stream = generator.stream("hello", 8, 0)
+    assert next(stream).startswith("event: token")
+    stream.close()
+    assert finished.is_set()

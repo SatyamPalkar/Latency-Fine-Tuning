@@ -7,6 +7,8 @@ from api.main import app
 @pytest.fixture(autouse=True)
 def fake_provider(monkeypatch):
     monkeypatch.setattr(app.state, "generator_provider", FakeGenerator)
+    monkeypatch.setattr(app.state, "generator", None)
+    monkeypatch.setattr(app.state, "model_error", False)
 
 
 class FakeGenerator:
@@ -38,7 +40,9 @@ def test_health() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "model_loaded": True}
+    assert response.json()["status"] == "ok"
+    assert response.json()["model_loaded"] is False
+    assert client.get("/ready").status_code == 503
 
 
 def test_generate() -> None:

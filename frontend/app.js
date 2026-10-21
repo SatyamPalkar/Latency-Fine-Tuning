@@ -7,6 +7,40 @@ const status = element("status");
 const responseText = element("response");
 let result = null;
 let running = false;
+let activeRequest = null;
+let stoppedByUser = false;
+
+document.querySelectorAll("[data-prompt]").forEach((button) => {
+  button.addEventListener("click", () => {
+    promptInput.value = button.dataset.prompt;
+    promptInput.dispatchEvent(new Event("input"));
+    promptInput.focus();
+  });
+});
+
+element("cancel").addEventListener("click", () => {
+  stoppedByUser = true;
+  activeRequest?.abort();
+});
+
+async function refreshServiceStatus() {
+  try {
+    const response = await fetch("/health", { signal: AbortSignal.timeout(5000), cache: "no-store" });
+    if (!response.ok) throw new Error("Service unavailable");
+    const health = await response.json();
+    if (!running) {
+      element("model-name").textContent = health.model_name;
+      element("max-tokens").max = health.max_new_tokens;
+      if (Number(element("max-tokens").value) > health.max_new_tokens) element("max-tokens").value = health.max_new_tokens;
+      setStatus(health.model_loaded ? "Model ready" : health.model_loading ? "Loading model…" : "Loads on first request", health.model_loading ? "busy" : "ready");
+    }
+    if (health.model_loading) setTimeout(refreshServiceStatus, 2000);
+  } catch {
+    if (!running) setStatus("Service unavailable", "error");
+  }
+}
+
+refreshServiceStatus();
 
 promptInput.addEventListener("input", () => {
   element("character-count").textContent = `${promptInput.value.length.toLocaleString()} / 4,000`;
@@ -96,7 +130,7 @@ function drawTiming() {
   Plotly.newPlot(chart, traces, {
     barmode: "stack", height: 126, margin: { l: 0, r: 20, t: 5, b: 30 },
     paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)", showlegend: false,
-    font: { family: "-apple-system, sans-serif", size: 10, color: "#68726e" },
+    font: { family: "-apple-system, sans-serif", size: 12, color: "#68726e" },
     xaxis: { rangemode: "tozero", ticksuffix: " ms", gridcolor: "#e0e6e2", zeroline: false, fixedrange: true },
     yaxis: { visible: false, fixedrange: true },
   }, { responsive: true, displayModeBar: false });
@@ -116,6 +150,7 @@ form.addEventListener("submit", async (event) => {
     temperature: Number(element("temperature").value),
   };
   running = true;
+  stoppedByUser = false;
   clearResult();
   element("error").hidden = true;
   responseText.setAttribute("aria-busy", "true");
@@ -123,6 +158,9 @@ form.addEventListener("submit", async (event) => {
   element("submit").textContent = "Generating...";
   for (const control of form.elements) control.disabled = true;
   const controller = new AbortController();
+  activeRequest = controller;
+  element("cancel").hidden = false;
+  element("cancel").disabled = false;
   const timeout = setTimeout(() => controller.abort(), 180000);
   let reader;
   let accumulatedText = "";
@@ -177,13 +215,13 @@ form.addEventListener("submit", async (event) => {
     showResult(finalMetrics, accumulatedText);
     setStatus("Complete", "complete");
   } catch (error) {
-    element("error").textContent = error.name === "AbortError"
+    element("error").textContent = stoppedByUser ? "Generation stopped. You can edit the prompt and try again." : error.name === "AbortError"
       ? "Request timed out after 3 minutes. The server may still be loading or generating. Check its logs before retrying."
       : error.message;
     element("error").hidden = false;
     element("json-response").textContent = "Request failed. No completed measurements.";
     if (!accumulatedText) responseText.textContent = "No response received.";
-    setStatus("Request failed", "error");
+    setStatus(stoppedByUser ? "Stopped" : "Request failed", stoppedByUser ? "ready" : "error");
   } finally {
     clearTimeout(timeout);
     if (reader) { await reader.cancel().catch(() => {}); reader.releaseLock(); }
@@ -191,6 +229,8 @@ form.addEventListener("submit", async (event) => {
     element("submit").textContent = "Generate";
     responseText.setAttribute("aria-busy", "false");
     running = false;
+    activeRequest = null;
+    element("cancel").hidden = true;
   }
 });
 
