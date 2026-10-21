@@ -2,6 +2,12 @@
 
 The deployment preparation adds accurate readiness checks, one active generation at a time, prompt/context validation, cancellable streaming, a production Dockerfile, and a Render configuration. The live UI includes example prompts and model-loading status. See [DEPLOYMENT.md](DEPLOYMENT.md) for setup, verification results, and remaining hosting steps. Python 3.11 or newer is required.
 
+**Hosting:** Run real model inference with the Docker/Render configuration. Vercel
+deploys only the static frontend, avoiding its Python function size limit. Connect
+a hosted inference service using `LATENCY_BACKEND_URL`; without it, the site shows
+an explicit offline state and historical benchmarks. See the
+[Vercel deployment steps](DEPLOYMENT.md#vercel-frontend-only).
+
 A Dockerized FastAPI service for measuring and improving **Time To First Token (TTFT)** in local LLM inference.
 
 This project is intentionally scoped as a two-week, hiring-manager-friendly MVP: it focuses on inference APIs, streaming, latency instrumentation, reproducible benchmarks, tests, Docker, and clear benchmark charts.

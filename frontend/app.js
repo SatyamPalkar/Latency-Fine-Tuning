@@ -24,6 +24,13 @@ element("cancel").addEventListener("click", () => {
 });
 
 async function refreshServiceStatus() {
+  if (window.LATENCY_BACKEND_CONFIGURED === false) {
+    setStatus("Inference offline", "error");
+    element("submit").disabled = true;
+    element("error").textContent = "Live inference is unavailable until the model server is connected. You can still explore the benchmark dashboard.";
+    element("error").hidden = false;
+    return;
+  }
   try {
     const response = await fetch("/health", { signal: AbortSignal.timeout(5000), cache: "no-store" });
     if (!response.ok) throw new Error("Service unavailable");

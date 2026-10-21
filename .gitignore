@@ -50,3 +50,6 @@ mlruns/
 
 # OS files
 .DS_Store
+
+# Generated Vercel static deployment and local account links
+.vercel/

@@ -77,6 +77,56 @@ To finish:
 
 References: [Render Docker deployments](https://render.com/docs/docker), [Blueprint fields](https://render.com/docs/blueprint-spec), and [port binding](https://render.com/docs/web-services#port-binding).
 
+## Vercel: frontend only
+
+Do not deploy `api/main.py` as a Vercel Python function. The reported Python
+bundle was 6,848.28 MB against a 500 MB limit. Installing PyTorch from the default
+Linux package index can also pull in CUDA packages; the Dockerfile deliberately
+installs CPU-only PyTorch. Excluding PyTorch or Transformers from a Python function
+would break inference.
+
+The repository now has a separate static Vercel build. `vercel.json` overrides
+FastAPI framework detection, skips dependency installation, and runs
+`node scripts/build-vercel.mjs`. `.vercelignore` allows only frontend/dashboard
+assets, this build script, and Vercel configuration. The generated Build Output API
+artifact contains no Python or Node functions, model files, or ML dependencies.
+The Vercel frontend uses the pinned Plotly CDN script; the Docker app continues
+serving Plotly locally.
+
+Configure the existing Vercel project as follows:
+
+1. Select branch `latency-deployment` and the repository root as Root Directory.
+2. Use Framework Preset **Other**. The checked-in configuration supplies the build,
+   install, and output settings; remove any conflicting project overrides.
+3. Deploy. Until a model server is connected, the frontend explicitly displays
+   **Inference offline**, disables generation, and serves the historical benchmark
+   dashboard. No responses or live measurements are fabricated.
+4. For live inference, first deploy the Docker service on Render using the steps
+   above. Alternatively, use its returned URL directly for the entire application;
+   Vercel is optional.
+5. If retaining Vercel, set its `LATENCY_BACKEND_URL` environment variable to the
+   **actual HTTPS origin** of that service, without a path or credentials. Set it
+   for each desired deployment environment and redeploy; it is read at build time.
+   Health, readiness, generation, SSE streaming, and documentation routes then
+   proxy to that service. Browser requests remain on the Vercel origin.
+6. Verify a real streamed request on the deployed Vercel URL. External proxy
+   behavior and hosted inference have not yet been verified from this machine.
+
+Local build and regression checks require only Node.js, without `pip install`:
+
+```sh
+node scripts/build-vercel.mjs
+node --test tests/test_vercel_build.mjs
+```
+
+An unset backend URL intentionally permits an offline frontend deployment; an
+invalid configured URL fails the build. A successful static build is not evidence
+that model inference is online. A hosting account/service is still needed for it.
+
+References: [Vercel Python bundle limits](https://vercel.com/docs/functions/runtimes/python),
+[Build Output API](https://vercel.com/docs/build-output-api/configuration), and
+[deployment exclusions](https://vercel.com/docs/deployments/vercel-ignore).
+
 ## Optional development tools
 
 ```sh

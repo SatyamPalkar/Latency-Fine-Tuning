@@ -1,0 +1,8 @@
+# Vercel hosts the frontend; Docker hosts Python inference.
+/*
+!vercel.json
+!frontend/
+!dashboard/
+!scripts/
+/scripts/*
+!/scripts/build-vercel.mjs
