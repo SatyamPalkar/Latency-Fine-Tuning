@@ -127,6 +127,40 @@ References: [Vercel Python bundle limits](https://vercel.com/docs/functions/runt
 [Build Output API](https://vercel.com/docs/build-output-api/configuration), and
 [deployment exclusions](https://vercel.com/docs/deployments/vercel-ignore).
 
+## Free GitHub Pages deployment
+
+The GitHub Pages version runs real quantized distilgpt2 inference in a browser
+worker using Transformers.js 3.8.1 and single-threaded ONNX/WASM. It requires no
+Python server, API token, or paid compute account. Model files come from Hugging
+Face; the pinned runtime and Plotly scripts come from public CDNs. The initial
+model download can take several minutes; subsequent visits can use browser cache.
+
+Build the publishable directory after changing frontend files:
+
+```sh
+node scripts/build-pages.mjs
+```
+
+Commit the generated `docs/` together with the source changes. GitHub Pages is
+configured to publish `/docs` on `latency-deployment`. Links are relative so the
+site works below the repository path. The `.nojekyll` file disables Jekyll.
+The generated directory contains only public web assets and documentation.
+
+Generation loads the model on the first request. The Stop button terminates its
+worker, including an in-progress download or generation; a later request creates
+a fresh worker and uses cached model files when available. Over-context requests
+are rejected before inference. Browser performance and memory vary by device.
+
+TTFT is measured from just before `model.generate()` to the first generated token
+callback; total latency ends when `generate()` resolves. This excludes model
+loading and prompt tokenization, but includes runtime warmup during first
+generation. Output token counts include special tokens. UI and JSON results
+identify browser execution; historical Python benchmark charts remain separate.
+
+The original Python server, Docker and Vercel deployment paths still work. The
+browser path is enabled only by the generated Pages HTML. Vercel does not use or
+need to publish the generated `docs/` directory.
+
 ## Optional development tools
 
 ```sh

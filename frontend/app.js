@@ -9,6 +9,10 @@ let result = null;
 let running = false;
 let activeRequest = null;
 let stoppedByUser = false;
+const browserRuntime = window.LATENCY_BROWSER_MODE ? import("./browser-client.js") : null;
+async function serviceFetch(url, options) {
+  return browserRuntime ? (await browserRuntime).request(url, options) : fetch(url, options);
+}
 
 document.querySelectorAll("[data-prompt]").forEach((button) => {
   button.addEventListener("click", () => {
@@ -32,7 +36,7 @@ async function refreshServiceStatus() {
     return;
   }
   try {
-    const response = await fetch("/health", { signal: AbortSignal.timeout(5000), cache: "no-store" });
+    const response = await serviceFetch("/health", { signal: AbortSignal.timeout(5000), cache: "no-store" });
     if (!response.ok) throw new Error("Service unavailable");
     const health = await response.json();
     if (!running) {
@@ -88,7 +92,7 @@ function showResult(data, accumulatedText) {
   if (numericFields.some((key) => typeof data[key] !== "number" || !Number.isFinite(data[key]) || data[key] < 0)
       || !(data.ttft_ms === null || (typeof data.ttft_ms === "number" && Number.isFinite(data.ttft_ms) && data.ttft_ms >= 0 && data.ttft_ms <= data.total_latency_ms))
       || typeof data.model_name !== "string" || typeof data.device !== "string") {
-    throw new Error("The server returned invalid latency metrics.");
+    throw new Error("Inference returned invalid latency metrics.");
   }
   result = {
     text: typeof data.text === "string" ? data.text : accumulatedText,
@@ -99,6 +103,7 @@ function showResult(data, accumulatedText) {
     ttft_ms: data.ttft_ms,
     total_latency_ms: data.total_latency_ms,
     tokens_per_second: data.tokens_per_second,
+    ...(data.measurement_scope ? { measurement_scope: data.measurement_scope } : {}),
   };
   const decimal = (value) => value === null ? "N/A" : value.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
   element("ttft").textContent = decimal(result.ttft_ms);
@@ -173,7 +178,7 @@ form.addEventListener("submit", async (event) => {
   let accumulatedText = "";
   let finalMetrics = null;
   try {
-    const response = await fetch("/generate-stream", {
+    const response = await serviceFetch("/generate-stream", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload), signal: controller.signal,
     });
@@ -198,6 +203,7 @@ form.addEventListener("submit", async (event) => {
       if (!dataLines.length) return;
       const data = JSON.parse(dataLines.join("\n"));
       if (eventType === "error") throw new Error(data.message || "Generation failed.");
+      if (eventType === "status") setStatus(data.message, "busy");
       if (eventType === "token") {
         accumulatedText += data.text;
         responseText.textContent = accumulatedText;
@@ -223,7 +229,7 @@ form.addEventListener("submit", async (event) => {
     setStatus("Complete", "complete");
   } catch (error) {
     element("error").textContent = stoppedByUser ? "Generation stopped. You can edit the prompt and try again." : error.name === "AbortError"
-      ? "Request timed out after 3 minutes. The server may still be loading or generating. Check its logs before retrying."
+      ? (browserRuntime ? "Request timed out after 3 minutes. Try again on a faster connection or use fewer output tokens." : "Request timed out after 3 minutes. The server may still be loading or generating. Check its logs before retrying.")
       : error.message;
     element("error").hidden = false;
     element("json-response").textContent = "Request failed. No completed measurements.";

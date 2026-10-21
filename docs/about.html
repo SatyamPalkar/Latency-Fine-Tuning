@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About | Latency Lab</title><link rel="stylesheet" href="./static/styles.css"></head>
+<body><main><a href="./">← Live inference</a><h1>Real inference. In your browser.</h1>
+<p>This free demo runs quantized distilgpt2 through Transformers.js and ONNX Runtime in a web worker on your CPU. No paid model API or backend server is used.</p>
+<p>The initial request downloads model files from Hugging Face and the runtime from jsDelivr. Downloads may take a few minutes. Your browser can cache them for later visits. Prompts are processed on your device.</p>
+<p>TTFT starts immediately before model.generate and ends at its first generated token callback. Total latency ends when generation resolves. Both exclude model loading and prompt tokenization; first-run runtime warmup is included. Counts include generated special tokens.</p>
+<p>These are device-dependent browser measurements. The historical benchmark dashboard records separate Python server runs and should not be compared as equivalent hardware results.</p>
+<p>Stop terminates the worker. A later request reloads the model from the browser cache when available. If generation fails, retry with fewer tokens in a current desktop browser.</p>
+<p>The repository also includes the original FastAPI streaming server and Docker deployment.</p>
+<a href="https://github.com/SatyamPalkar/Latency-Fine-Tuning">Source and Python API documentation</a></main></body></html>

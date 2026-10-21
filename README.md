@@ -2,7 +2,13 @@
 
 The deployment preparation adds accurate readiness checks, one active generation at a time, prompt/context validation, cancellable streaming, a production Dockerfile, and a Render configuration. The live UI includes example prompts and model-loading status. See [DEPLOYMENT.md](DEPLOYMENT.md) for setup, verification results, and remaining hosting steps. Python 3.11 or newer is required.
 
-**Hosting:** Run real model inference with the Docker/Render configuration. Vercel
+**Free browser demo:** GitHub Pages publishes the generated `docs/` directory.
+It runs real quantized distilgpt2 locally in the visitor's browser, with streaming
+text and device-dependent latency measurements. No paid backend is required.
+Build it with `node scripts/build-pages.mjs`; see the
+[Pages deployment notes](DEPLOYMENT.md#free-github-pages-deployment).
+
+**Server hosting:** Run real model inference with the Docker/Render configuration. Vercel
 deploys only the static frontend, avoiding its Python function size limit. Connect
 a hosted inference service using `LATENCY_BACKEND_URL`; without it, the site shows
 an explicit offline state and historical benchmarks. See the
