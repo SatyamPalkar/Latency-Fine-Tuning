@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -22,7 +22,9 @@ const html = (await readFile(path.join(root, 'frontend/index.html'), 'utf8'))
   .replace('Server timing excludes model loading, prompt tokenization, and network transit.', 'Browser timing excludes model download and tokenization; includes first-run runtime warmup. Performance depends on your device.');
 await writeFile(path.join(output, 'index.html'), html);
 await writeFile(path.join(output, '.nojekyll'), '');
-await copyFile(path.join(root, 'dashboard/index.html'), path.join(output, 'benchmarks.html'));
+await copyFile(path.join(root, 'dashboard/reference.html'), path.join(output, 'benchmarks.html'));
+await copyFile(path.join(root, 'dashboard/index.html'), path.join(output, 'historical-benchmarks.html'));
+await cp(path.join(root, 'benchmarks/reference'), path.join(output, 'benchmark-data'), { recursive: true });
 await writeFile(path.join(output, 'about.html'), `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>About | Latency Lab</title><link rel="stylesheet" href="./static/styles.css"></head>

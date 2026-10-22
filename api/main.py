@@ -114,7 +114,15 @@ def create_app() -> FastAPI:
 
     @app.get("/benchmarks", include_in_schema=False)
     def benchmarks():
+        reference = ROOT / "dashboard" / "reference.html"
+        return FileResponse(reference if reference.exists() else ROOT / "dashboard" / "index.html")
+
+    @app.get("/historical-benchmarks.html", include_in_schema=False)
+    def historical_benchmarks():
         return FileResponse(ROOT / "dashboard" / "index.html")
+
+    if (ROOT / "benchmarks" / "reference").exists():
+        app.mount("/benchmark-data", StaticFiles(directory=ROOT / "benchmarks" / "reference"), name="benchmark-data")
 
     @app.get("/assets/plotly.min.js", include_in_schema=False)
     def plotly():

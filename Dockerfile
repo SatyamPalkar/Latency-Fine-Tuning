@@ -22,6 +22,7 @@ COPY --chown=appuser:appuser api ./api
 COPY --chown=appuser:appuser src ./src
 COPY --chown=appuser:appuser frontend ./frontend
 COPY --chown=appuser:appuser dashboard ./dashboard
+COPY --chown=appuser:appuser benchmarks/reference ./benchmarks/reference
 COPY --chown=appuser:appuser scripts/serve.py ./scripts/serve.py
 
 USER appuser

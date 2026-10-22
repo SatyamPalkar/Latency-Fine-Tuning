@@ -56,7 +56,8 @@ Each run produces:
 - `.csv`: raw measured rows, order, repetition, success/error, token counts and timings.
 - `.manifest.json`: exact prompts/settings, excluded warmups, timestamps, server
   runtime/model revision/thread count, separately identified client environment,
-  hardware label, source commit/dirty flag, runner hash and CSV SHA-256.
+  hardware label, runner-checkout commit/dirty flag, runner hash and CSV SHA-256.
+  The runner's commit is not an independently attested remote-server revision.
 - `.summary.json`: attempted/success/failed counts, mean/p50/p95 with sample counts,
   and output-token ranges for every prompt/endpoint pair.
 

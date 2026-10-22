@@ -1,0 +1,32 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Latency Lab | Reproducible CPU Benchmark</title><style>
+*{box-sizing:border-box}body{margin:0;background:#f5f3ec;color:#25372c;font:17px/1.65 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:40px 22px}a{color:#246b52}h1{font-size:clamp(30px,5vw,52px);line-height:1.1}.eyebrow{letter-spacing:2px;font-size:12px}.cards{display:flex;gap:20px;flex-wrap:wrap;margin:30px 0}.cards div{background:white;border:1px solid #d8ded4;padding:18px 25px;border-radius:12px}.cards strong{display:block;font-size:30px}.table{overflow:auto}table{border-collapse:collapse;min-width:1000px;width:100%;font-size:14px}th,td{padding:12px;text-align:left;border-bottom:1px solid #cdd7ce}th{background:#e4eade}pre{padding:20px;background:#e8ece2;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.note{padding:20px;border-left:3px solid #3a785e;background:#edf0e7}li{margin-bottom:10px}
+</style></head><body><main><a href="./">← Live inference</a><p class="eyebrow">MEASURED PYTHON SERVER BASELINE</p><h1>Reproducible CPU benchmarks.</h1>
+<p>Three frozen prompts. Two HTTP endpoints. 30 measured repetitions per case. This is a local Python-server experiment, separate from the browser demo.</p>
+<div class="cards"><div><strong>180</strong>measured requests</div><div><strong>12</strong>excluded warmups</div><div><strong>0</strong>failed requests</div></div>
+<p>Apple M3 Pro; CPU inference; 1 PyTorch thread; macOS arm64; shared interactive workstation<br>Completed 2026-10-22T00:44:23.767084+00:00</p>
+<div class="table"><table><thead><tr><th>Prompt</th><th>Endpoint</th><th>n</th><th>Server TTFT p50 ms</th><th>TTFT p95 ms</th><th>Generation p50 ms</th><th>HTTP wall p50 ms</th><th>First text p50 ms</th><th>Mean tokens/s</th></tr></thead><tbody><tr><td>short</td><td>generate</td><td>30</td><td>7.19</td><td>7.42</td><td>170.78</td><td>172.38</td><td>—</td><td>187.03</td></tr><tr><td>short</td><td>generate-stream</td><td>30</td><td>7.35</td><td>7.80</td><td>176.21</td><td>177.86</td><td>8.82</td><td>180.87</td></tr><tr><td>medium</td><td>generate</td><td>30</td><td>12.12</td><td>12.68</td><td>177.75</td><td>179.41</td><td>—</td><td>179.43</td></tr><tr><td>medium</td><td>generate-stream</td><td>30</td><td>12.30</td><td>13.45</td><td>186.32</td><td>187.98</td><td>13.87</td><td>172.26</td></tr><tr><td>long</td><td>generate</td><td>30</td><td>17.48</td><td>17.85</td><td>184.64</td><td>186.42</td><td>—</td><td>172.41</td></tr><tr><td>long</td><td>generate-stream</td><td>30</td><td>17.60</td><td>17.90</td><td>193.48</td><td>195.30</td><td>19.34</td><td>164.83</td></tr></tbody></table></div>
+<p><a href="./benchmark-data/apple-m3-pro-cpu.csv">Raw requests</a> · <a href="./benchmark-data/apple-m3-pro-cpu.manifest.json">Provenance manifest</a> · <a href="./benchmark-data/apple-m3-pro-cpu.summary.json">Summary JSON</a></p><div class="note">A reproducible baseline is not a speedup claim. The serial run measures warmed inference on one workstation; it does not establish production tail latency or multi-user capacity.</div>
+<h2>What the timings mean</h2><ul><li>Server TTFT observes the first generated token, before text buffering. Generation excludes model loading and prompt tokenization.</li><li>Client first text includes HTTP transport and word buffering. It is not token-level TTFT. Loopback does not represent Internet latency.</li><li>Greedy decoding, 32 requested output tokens, one CPU thread and a pinned model revision make the setup explicit. Token ranges and any failures remain in the artifacts.</li><li>p95 uses linear interpolation over successful observations. Thirty repetitions per case are exploratory; independent repetitions and controlled power/thermal conditions are needed for stronger claims.</li><li>The workstation was shared and power/thermal state was not controlled. No GPU, cold-start, concurrent-load or browser benchmarks are included here.</li></ul>
+<h2>Environment and settings</h2><pre>{
+  &quot;hardware&quot;: &quot;Apple M3 Pro; CPU inference; 1 PyTorch thread; macOS arm64; shared interactive workstation&quot;,
+  &quot;server&quot;: {
+    &quot;model_name&quot;: &quot;distilgpt2&quot;,
+    &quot;model_revision&quot;: &quot;2290a62682d06624634c1f46a6ad5be0f47f38aa&quot;,
+    &quot;device&quot;: &quot;cpu&quot;,
+    &quot;python&quot;: &quot;3.13.5&quot;,
+    &quot;platform&quot;: &quot;Darwin&quot;,
+    &quot;architecture&quot;: &quot;arm64&quot;,
+    &quot;torch&quot;: &quot;2.9.0&quot;,
+    &quot;transformers&quot;: &quot;4.57.1&quot;,
+    &quot;torch_threads&quot;: 1,
+    &quot;generation_timeout_seconds&quot;: 45.0,
+    &quot;max_new_tokens&quot;: 256
+  },
+  &quot;request&quot;: {
+    &quot;max_new_tokens&quot;: 32,
+    &quot;temperature&quot;: 0.0
+  },
+  &quot;source_commit&quot;: &quot;d4670b30b0f0c50ec3cca86849b09a81a9036671&quot;
+}</pre><p><a href="https://github.com/SatyamPalkar/Latency-Fine-Tuning/blob/latency-deployment/BENCHMARKS.md">Reproduction instructions and timing contract ↗</a></p>
+<p><a href="./historical-benchmarks.html">Older historical charts</a> · <a href="./">Return to browser demo</a></p></main></body></html>
