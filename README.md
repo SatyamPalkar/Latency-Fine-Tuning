@@ -1,5 +1,19 @@
 # LLM TTFT Optimization Platform
 
+**[Run the free browser demo](https://satyampalkar.github.io/Latency-Fine-Tuning/)** ·
+**[Reproduce the Python benchmarks](BENCHMARKS.md)** ·
+**[Deployment guide](DEPLOYMENT.md)**
+
+The browser demo performs real local ONNX inference. The Python service measures
+model serving on its own host. Their hardware and timing boundaries differ;
+browser results and historical server charts are labelled separately.
+
+The reproducible benchmark runner now records excluded warmups, randomized serial
+request order, greedy decoding settings, server runtime/model revision, raw
+success/failure rows, p50/p95 summaries, and artifact hashes. Start with
+[BENCHMARKS.md](BENCHMARKS.md); legacy chart commands below are optional and do not
+replace the provenance manifest.
+
 The deployment preparation adds accurate readiness checks, one active generation at a time, prompt/context validation, cancellable streaming, a production Dockerfile, and a Render configuration. The live UI includes example prompts and model-loading status. See [DEPLOYMENT.md](DEPLOYMENT.md) for setup, verification results, and remaining hosting steps. Python 3.11 or newer is required.
 
 **Free browser demo:** GitHub Pages publishes the generated `docs/` directory.

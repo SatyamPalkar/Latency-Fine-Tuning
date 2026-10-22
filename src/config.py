@@ -5,6 +5,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class Settings:
     model_name: str = os.getenv("MODEL_NAME", "distilgpt2")
+    model_revision: str | None = os.getenv("MODEL_REVISION") or None
     max_new_tokens: int = int(os.getenv("MAX_NEW_TOKENS", "256"))
     device: str = os.getenv("DEVICE", "auto")
     generation_timeout_seconds: float = float(os.getenv("GENERATION_TIMEOUT_SECONDS", "45"))

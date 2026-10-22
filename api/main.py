@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import platform
+from importlib.metadata import version
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Lock
@@ -139,6 +141,25 @@ def create_app() -> FastAPI:
         return JSONResponse(
             {"status": state, "model_loaded": loaded}, status_code=200 if loaded else 503
         )
+
+    @app.get("/benchmark-info")
+    def benchmark_info():
+        """Describe the actual serving process, not the benchmark client's machine."""
+        import torch
+        generator = app.state.generator
+        if generator is None:
+            raise HTTPException(503, "Load the model with a warmup request before benchmarking.")
+        config = getattr(getattr(generator, "model", None), "config", None)
+        return {
+            "model_name": getattr(generator, "model_name", settings.model_name),
+            "model_revision": getattr(config, "_commit_hash", None) or settings.model_revision,
+            "device": getattr(generator, "device", None),
+            "python": platform.python_version(), "platform": platform.system(),
+            "architecture": platform.machine(), "torch": str(torch.__version__),
+            "transformers": version("transformers"), "torch_threads": torch.get_num_threads(),
+            "generation_timeout_seconds": settings.generation_timeout_seconds,
+            "max_new_tokens": settings.max_new_tokens,
+        }
 
     @app.post("/generate", response_model=GenerateResponse)
     def generate(request: GenerateRequest):

@@ -18,8 +18,12 @@ test:
 lint:
 	ruff check .
 
+BENCHMARK_URL ?= http://127.0.0.1:8000
+BENCHMARK_OUTPUT ?= benchmark_results/results.csv
+HARDWARE ?=
+
 benchmark:
-	python3 scripts/run_benchmark.py --url http://localhost:8000 --output benchmark_results/results.csv
+	python3 scripts/run_benchmark.py --url "$(BENCHMARK_URL)" --output "$(BENCHMARK_OUTPUT)" --hardware-label "$(HARDWARE)"
 
 plots:
 	python3 scripts/make_plots.py --input benchmark_results/results.csv --output-dir plots

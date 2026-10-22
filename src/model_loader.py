@@ -22,11 +22,11 @@ def load_model_and_tokenizer(model_name: Optional[str] = None, device: Optional[
     selected_model = model_name or settings.model_name
     selected_device = resolve_device(device or settings.device)
 
-    tokenizer = AutoTokenizer.from_pretrained(selected_model)
+    tokenizer = AutoTokenizer.from_pretrained(selected_model, revision=settings.model_revision)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(selected_model, use_safetensors=True)
+    model = AutoModelForCausalLM.from_pretrained(selected_model, revision=settings.model_revision, use_safetensors=True)
     model.to(selected_device)
     model.eval()
     return model, tokenizer, selected_device
